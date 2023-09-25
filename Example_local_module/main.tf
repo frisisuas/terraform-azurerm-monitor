@@ -1,25 +1,39 @@
 terraform {
-  required_version = "~> 0.13.0"
   required_providers {
-    azurerm = "~> 2.25.0"
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "3.74.0"
+    }
   }
 }
 
 provider "azurerm" {
-  features {
+  features {}
+}
+
+
+module "find-ids" {
+  source = "../modules/AZ-Resource-Identify"
+
+  alertScope = {
+    "resource1" = {
+      resourceName  = "test-vm01"
+      resourceGroup = "test-asr"
+      resourceType  = "Microsoft.Compute/virtualMachines"
+    }
   }
 }
 
 module "azmonitor-action-groups" {
-  source = "git::ssh://git@https://github.com/globalbao/terraform-azurerm-monitor//modules/AzMonitor-ActionGroups?ref=v1.0"
+  source = "../modules/AzMonitor-ActionGroups/"
 
   tags = {
     Application = "Azure Monitor Alerts"
-    CostCentre  = "123"
-    Environment = "dev"
-    ManagedBy   = "Jesse Loudon"
-    Owner       = "Jesse Loudon"
-    Support     = "coder_au@outlook.com"
+    CostCentre  = ""
+    Environment = ""
+    ManagedBy   = ""
+    Owner       = ""
+    Support     = ""
   }
 
   actionGroups = {
@@ -53,186 +67,43 @@ module "azmonitor-action-groups" {
 }
 
 module "azmonitor-metric-alerts" {
-  source = "git::ssh://git@https://github.com/globalbao/terraform-azurerm-monitor//modules/AzMonitor-MetricAlerts?ref=v1.0"
-
-  tags = {
-    Application = "Azure Monitor Alerts"
-    CostCentre  = "123"
-    Environment = "dev"
-    ManagedBy   = "Jesse Loudon"
-    Owner       = "Jesse Loudon"
-    Support     = "coder_au@outlook.com"
-  }
+  source   = "../modules/AzMonitor-MetricAlerts/"
+  for_each = var.metric-alerts
+  tags = {}
 
   alertScope = {
     "resource1" = {
-      resourceName  = "azmonloadbalancer1"
-      resourceGroup = "DevResources"
-      resourceType  = "Microsoft.Network/loadBalancers"
-    },
-    "resource2" = {
-      resourceName  = "azmonappgateway1"
-      resourceGroup = "DevResources"
-      resourceType  = "Microsoft.Network/appGateway"
-    },
-    "resource3" = {
-      resourceName  = "azmonsqldb1"
-      resourceGroup = "DevResources"
-      resourceType  = "Microsoft.Sql/servers/databases"
+      resourceName  = "test-vm01"
+      resourceGroup = "test-asr"
+      resourceType  = "Microsoft.Compute/virtualMachines"
     }
   }
 
   metricAlerts = {
     "alert1" = {
-      alertName              = "azmonloadbalancer1-DipAvailability"
-      alertResourceGroupName = "DevResources"
+      alertName              = each.value.alertName
+      alertResourceGroupName = each.value.alertResourceGroupName
       alertScopes = [
-        module.azmonitor-metric-alerts.alert-scope["0"].resource1.resources[0].id
+        #module.azmonitor-metric-alerts.alert-scope["0"].resource1.resources[0].id
+        module.find-ids.alert-scope["0"].resource1.resources[0].id
       ]
-      alertDescription            = "Average Load Balancer health probe status per time duration"
-      alertEnabled                = "true"
-      alertAutoMitigate           = "true"
-      alertFrequency              = "PT15M"
-      alertWindowSize             = "PT1H"
-      alertSeverity               = "2"
-      alertTargetResourceType     = "Microsoft.Network/loadBalancers"
-      alertTargetResourceLoc      = "australiaeast"
-      dynCriteriaMetricNamespace  = "Microsoft.Network/loadBalancers"
-      dynCriteriaMetricName       = "DipAvailability"
-      dynCriteriaAggregation      = "Average"
-      dynCriteriaOperator         = "LessThan"
-      dynCriteriaAlertSensitivity = "Medium"
+      alertDescription            = each.value.alertDescription
+      alertEnabled                = each.value.alertEnabled
+      alertAutoMitigate           = each.value.alertAutoMitigate
+      alertFrequency              = each.value.alertFrequency
+      alertWindowSize             = each.value.alertWindowSize
+      alertSeverity               = each.value.alertSeverity
+      alertTargetResourceType     = each.value.alertTargetResourceType
+      alertTargetResourceLoc      = each.value.alertTargetResourceLoc
+      dynCriteriaMetricNamespace  = each.value.dynCriteriaMetricNamespace
+      dynCriteriaMetricName       = each.value.dynCriteriaMetricName
+      dynCriteriaAggregation      = each.value.dynCriteriaAggregation
+      dynCriteriaOperator         = each.value.dynCriteriaOperator
+      dynCriteriaAlertSensitivity = each.value.dynCriteriaAlertSensitivity
       dynCriteriaDimensions = [
-        {
-          name     = "ProtocolType"
-          operator = "Include"
-          values   = "*"
-        },
-        {
-          name     = "FrontendIPAddress"
-          operator = "Include"
-          values   = "*"
-        },
-        {
-          name     = "BackendIPAddress"
-          operator = "Include"
-          values   = "*"
-        },
-      ]
-      actionGroupID = module.azmonitor-action-groups.ag["0"].group1.id
-    },
-    "alert2" = {
-      alertName              = "azmonloadbalancer1-VipAvailability"
-      alertResourceGroupName = "DevResources"
-      alertScopes = [
-        module.azmonitor-metric-alerts.alert-scope["0"].resource1.resources[0].id
-      ]
-      alertDescription            = "Average Load Balancer data path availability per time duration"
-      alertEnabled                = "true"
-      alertAutoMitigate           = "true"
-      alertFrequency              = "PT15M"
-      alertWindowSize             = "PT1H"
-      alertSeverity               = "2"
-      alertTargetResourceType     = "Microsoft.Network/loadBalancers"
-      alertTargetResourceLoc      = "australiaeast"
-      dynCriteriaMetricNamespace  = "Microsoft.Network/loadBalancers"
-      dynCriteriaMetricName       = "VipAvailability"
-      dynCriteriaAggregation      = "Average"
-      dynCriteriaOperator         = "LessThan"
-      dynCriteriaAlertSensitivity = "Medium"
-      dynCriteriaDimensions = [
-        {
-          name     = "FrontendPort"
-          operator = "Include"
-          values   = "*"
-        },
-        {
-          name     = "FrontendIPAddress"
-          operator = "Include"
-          values   = "*"
-        },
-      ]
-      actionGroupID = module.azmonitor-action-groups.ag["0"].group2.id
-    },
-    "alert3" = {
-      alertName              = "azmonappgateway1-UnhealthyHostcount"
-      alertResourceGroupName = "DevResources"
-      alertScopes = [
-        module.azmonitor-metric-alerts.alert-scope["0"].resource2.resources[0].id
-      ]
-      alertDescription            = "Current UnhealthyHostcount of the Application Gateway"
-      alertEnabled                = "true"
-      alertAutoMitigate           = "true"
-      alertFrequency              = "PT15M"
-      alertWindowSize             = "PT1H"
-      alertSeverity               = "2"
-      alertTargetResourceType     = "Microsoft.Network/applicationGateways"
-      alertTargetResourceLoc      = "australiaeast"
-      dynCriteriaMetricNamespace  = "Microsoft.Network/applicationGateways"
-      dynCriteriaMetricName       = "UnhealthyHostcount"
-      dynCriteriaAggregation      = "Average"
-      dynCriteriaOperator         = "GreaterThan"
-      dynCriteriaAlertSensitivity = "Medium"
-      dynCriteriaDimensions = [
-        {
-          name     = "BackendSettingsPool"
-          operator = "Include"
-          values   = "*"
-        }
-      ]
-      actionGroupID = module.azmonitor-action-groups.ag["0"].group1.id
-    },
-    "alert4" = {
-      alertName              = "azmonappgateway1-FailedRequests"
-      alertResourceGroupName = "DevResources"
-      alertScopes = [
-        module.azmonitor-metric-alerts.alert-scope["0"].resource2.resources[0].id
-      ]
-      alertDescription            = "Count of failed requests that Application Gateway has served"
-      alertEnabled                = "true"
-      alertAutoMitigate           = "true"
-      alertFrequency              = "PT15M"
-      alertWindowSize             = "PT1H"
-      alertSeverity               = "2"
-      alertTargetResourceType     = "Microsoft.Network/applicationGateways"
-      alertTargetResourceLoc      = "australiaeast"
-      dynCriteriaMetricNamespace  = "Microsoft.Network/applicationGateways"
-      dynCriteriaMetricName       = "FailedRequests"
-      dynCriteriaAggregation      = "Total"
-      dynCriteriaOperator         = "GreaterThan"
-      dynCriteriaAlertSensitivity = "Medium"
-      dynCriteriaDimensions = [
-        {
-          name     = "BackendSettingsPool"
-          operator = "Include"
-          values   = "*"
-        }
-      ]
-      actionGroupID = module.azmonitor-action-groups.ag["0"].group1.id
-    }
-  }
 
-  metricAlerts-noDimensions = {
-    "alert1" = {
-      alertName              = "azmonsqldb1-avg_cpu_percent"
-      alertResourceGroupName = "DevResources"
-      alertScopes = [
-        module.azmonitor-metric-alerts.alert-scope["0"].resource3.resources[0].id
       ]
-      alertDescription            = "Average CPU percentage"
-      alertEnabled                = "true"
-      alertAutoMitigate           = "true"
-      alertFrequency              = "PT15M"
-      alertWindowSize             = "PT1H"
-      alertSeverity               = "3"
-      alertTargetResourceType     = "Microsoft.Sql/managedInstances"
-      alertTargetResourceLoc      = "australiaeast"
-      dynCriteriaMetricNamespace  = "Microsoft.Sql/managedInstances"
-      dynCriteriaMetricName       = "avg_cpu_percent"
-      dynCriteriaAggregation      = "Average"
-      dynCriteriaOperator         = "GreaterThan"
-      dynCriteriaAlertSensitivity = "Medium"
-      actionGroupID               = module.azmonitor-action-groups.ag["0"].group2.id
+      actionGroupID = module.azmonitor-action-groups.ag["0"].group1.id
     }
   }
 }

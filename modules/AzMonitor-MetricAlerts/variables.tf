@@ -61,7 +61,7 @@ variable "metricAlerts-noDimensions" {
 }
 
 variable "tags" {
-  type = map
+  type = map(string)
   default = {
     Application = "tbc"
     CostCentre  = "tbc"
